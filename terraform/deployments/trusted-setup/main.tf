@@ -51,3 +51,26 @@ resource "aws_instance" "trusted-setup-runner" {
     Name      = "trusted-setup-runner-${count.index}"
   }
 }
+
+resource "aws_ebs_volume" "trusted_setup_runner" {
+  count             = 1
+  availability_zone = "${var.aws_region}c"
+  size              = "5000"
+  type              = "gp2"
+
+  tags = {
+    Name = "trusted-setup-${count.index}"
+  }
+
+  lifecycle {
+    prevent_destroy = false
+    ignore_changes  = ["aws_instance.trusted-setup-runner"]
+  }
+}
+
+resource "aws_volume_attachment" "trusted_setup_runner" {
+  device_name  = "/dev/sdh"
+  volume_id    = "${aws_ebs_volume.trusted_setup_runner.id}"
+  instance_id  = "${aws_instance.trusted-setup-runner.id}"
+  force_detach = false
+}
