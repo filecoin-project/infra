@@ -36,11 +36,16 @@ resource "aws_security_group" "trusted-setup-runner" {
   }
 }
 
+data "aws_subnet" "subnet" {
+  id = "${var.subnet_id}"
+}
+
 resource "aws_instance" "trusted-setup-runner" {
   count         = 1
   ami           = "ami-05dd872834847c880"
   instance_type = "c5.24xlarge"
   key_name      = "${var.aws_key_pair}"
+  subnet_id     = "${data.aws_subnet.subnet.id}"
 
   vpc_security_group_ids = [
     "${aws_security_group.trusted-setup-runner.id}",

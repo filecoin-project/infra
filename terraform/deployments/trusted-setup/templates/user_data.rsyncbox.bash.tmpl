@@ -1,0 +1,83 @@
+#!/usr/bin/env bash
+
+set -ex
+
+DEBIAN_FRONTEND=noninteractive apt-get update
+DEBIAN_FRONTEND=noninteractive apt-get install -y curl awscli jq
+
+cp /usr/share/doc/rsync/scripts/rrsync /usr/local/bin/rrsync
+chmod +x /usr/local/bin/rrsync
+
+USER_CHALLENGE="challenge"
+USER_RESPONSE="response"
+USER_DEFAULT="ubuntu"
+
+useradd $USER_CHALLENGE -m
+useradd $USER_RESPONSE  -m
+
+function userhome {
+  local user="$1"
+
+  getent passwd "$user" | cut -d: -f6
+}
+
+function setupssh {
+  local user="$1"
+  local homedir=$(userhome "$user")
+
+  mkdir "$homedir/.ssh"
+  touch "$homedir/.ssh/authorized_keys"
+
+  chmod 0700 "$homedir/.ssh"
+  chmod 0600 "$homedir/.ssh/authorized_keys"
+
+  chown -R $user:$user $homedir
+}
+
+setupssh $USER_CHALLENGE
+setupssh $USER_RESPONSE
+
+USER_HOME_CHALLENGE=$(userhome $USER_CHALLENGE)
+USER_HOME_RESPONSE=$(userhome $USER_RESPONSE)
+USER_HOME_DEFAULT=$(userhome $USER_DEFAULT)
+
+cat >> $USER_HOME_DEFAULT/.ssh/authorized_keys <<EOF
+${compute_public_key}
+EOF
+
+cat >> $USER_HOME_DEFAULT/compute.pub <<EOF
+${compute_public_key}
+EOF
+
+mkdir $USER_HOME_DEFAULT/scripts
+mkdir $USER_HOME_DEFAULT/participants
+
+cat >> $USER_HOME_DEFAULT/scripts/rebuild-rsync-challenge <<EOF
+#!/usr/bin/env bash
+
+mkdir -p $USER_HOME_CHALLENGE/data/
+echo 'command="/usr/local/bin/rrsync $USER_HOME_CHALLENGE/data",no-agent-forwarding,no-port-forwarding,no-pty,no-user-rc,no-X11-forwarding' \$(cat compute.pub)
+
+for p in \$(ls $USER_HOME_DEFAULT/participants/*.pub); do
+  echo 'command="/usr/local/bin/rrsync -ro $USER_HOME_CHALLENGE/data",no-agent-forwarding,no-port-forwarding,no-pty,no-user-rc,no-X11-forwarding' \$(cat \$p)
+done
+chown -R $USER_CHALLENGE:$USER_CHALLENGE $USER_HOME_CHALLENGE/data
+EOF
+
+cat >> $USER_HOME_DEFAULT/scripts/rebuild-rsync-response <<EOF
+#!/usr/bin/env bash
+
+echo 'command="/usr/local/bin/rrsync $USER_HOME_RESPONSE/data",no-agent-forwarding,no-port-forwarding,no-pty,no-user-rc,no-X11-forwarding' \$(cat compute.pub)
+
+for p in \$(ls $USER_HOME_DEFAULT/participants/*.pub); do
+  file=\$(basename \$p)
+  mkdir -p $USER_HOME_RESPONSE/data/\$${file%%.pub}
+  echo command=\"/usr/local/bin/rrsync -wo $USER_HOME_RESPONSE/data/\$${file%%.pub}\",no-agent-forwarding,no-port-forwarding,no-pty,no-user-rc,no-X11-forwarding \$(cat \$p)
+done
+chown -R $USER_RESPONSE:$USER_RESPONSE $USER_HOME_RESPONSE/data
+EOF
+
+chmod +x $USER_HOME_DEFAULT/scripts/rebuild-rsync-response
+chmod +x $USER_HOME_DEFAULT/scripts/rebuild-rsync-challenge
+
+chown -R $USER_DEFAULT:$USER_DEFAULT $USER_HOME_DEFAULT

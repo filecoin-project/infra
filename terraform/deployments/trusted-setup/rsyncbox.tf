@@ -3,8 +3,8 @@ resource "aws_instance" "rsync" {
   ami           = "ami-05dd872834847c880"
   instance_type = "c5.2xlarge"
   key_name      = "${var.aws_key_pair}"
-
-  iam_instance_profile = "${aws_iam_instance_profile.rsync.name}"
+  subnet_id     = "${data.aws_subnet.subnet.id}"
+  user_data     = "${data.template_file.user_data.rendered}"
 
   vpc_security_group_ids = [
     "${aws_security_group.trusted-setup-runner.id}",
@@ -21,58 +21,10 @@ resource "aws_instance" "rsync" {
   }
 }
 
-resource "aws_iam_role" "rsync" {
-  assume_role_policy = <<EOF
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Action": "sts:AssumeRole",
-      "Principal": {
-        "Service": "ec2.amazonaws.com"
-      },
-      "Effect": "Allow",
-      "Sid": ""
-    }
-  ]
-}
-EOF
-}
+data "template_file" "user_data" {
+  template = "${file("./templates/user_data.rsyncbox.bash.tmpl")}"
 
-resource "aws_iam_instance_profile" "rsync" {
-  role = "${aws_iam_role.rsync.name}"
-}
-
-data "aws_s3_bucket" "trusted_setup" {
-  bucket = "trusted-setup"
-}
-
-data "aws_iam_policy_document" "full_s3_access_trusted_setup" {
-  statement {
-    actions = [
-      "s3:ListBucket",
-      "s3:GetObject",
-      "s3:PutObject",
-      "s3:DeleteObject"
-    ]
-    resources = [
-      "${data.aws_s3_bucket.trusted_setup.arn}"
-    ]
+  vars {
+    compute_public_key = "${var.compute_public_key}"
   }
-  statement {
-    actions = [
-      "s3:ListBucket",
-      "s3:GetObject",
-      "s3:PutObject",
-      "s3:DeleteObject"
-    ]
-    resources = [
-      "${data.aws_s3_bucket.trusted_setup.arn}/*"
-    ]
-  }
-}
-
-resource "aws_iam_role_policy" "policy" {
-  role   = "${aws_iam_role.rsync.id}"
-  policy = "${data.aws_iam_policy_document.full_s3_access_trusted_setup.json}"
 }

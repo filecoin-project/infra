@@ -3,6 +3,9 @@ variable "project_id" {
   default     = ""
 }
 
+variable "compute_public_key" {}
+variable "subnet_id" {}
+
 variable "packet_auth_token" {
   description = "packet api token"
 }
