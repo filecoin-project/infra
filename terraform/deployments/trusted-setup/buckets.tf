@@ -5,6 +5,10 @@ resource "aws_s3_bucket" "trusted_setup" {
     enabled = true
   }
 
+  logging {
+    target_bucket = "${aws_s3_bucket.trusted_setup_logs.id}"
+    target_prefix = "trusted-setup-logs/"
+  }
 }
 
 resource "aws_s3_bucket_policy" "trusted_setup" {
@@ -32,4 +36,9 @@ resource "aws_s3_bucket_policy" "trusted_setup" {
     ]
 }
 POLICY
+}
+
+resource "aws_s3_bucket" "trusted_setup_logs" {
+  bucket = "trusted-setup-logs"
+  acl    = "log-delivery-write"
 }
