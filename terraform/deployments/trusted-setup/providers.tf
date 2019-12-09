@@ -4,7 +4,15 @@ provider "packet" {
 
 provider "aws" {
   region  = "${var.aws_region}"
-  version = "2.7"
+  version = "2.8"
+  profile = "filecoin"
+}
+
+provider "aws" {
+  alias  = "ap"
+  version = "2.8"
+  region = "ap-east-1"
+  profile = "filecoin"
 }
 
 terraform {
