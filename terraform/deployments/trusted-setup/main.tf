@@ -83,13 +83,18 @@ resource "aws_volume_attachment" "trusted_setup_runner" {
 resource "aws_instance" "trusted_setup_runner_x1" {
   count         = 1
   ami           = "ami-05dd872834847c880"
-  instance_type = "x1e.16xlarge"
+  instance_type = "x1e.32xlarge"
   key_name      = "${var.aws_key_pair}"
-  subnet_id     = "${data.aws_subnet.subnet.id}"
+  subnet_id     = "subnet-ab5f55c0"
 
   vpc_security_group_ids = [
     "${aws_security_group.trusted-setup-runner.id}",
   ]
+
+  root_block_device {
+    volume_type = "gp2"
+    volume_size = 512
+  }
 
   tags {
     Terraform = "yes"

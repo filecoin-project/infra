@@ -6,6 +6,10 @@ output "public_ips_aws" {
   value = "${aws_instance.trusted-setup-runner.*.public_ip}"
 }
 
+output "public_ips_x1" {
+  value = "${aws_instance.trusted_setup_runner_x1.*.public_ip}"
+}
+
 output "public_ips_rsync" {
   value = "${aws_instance.rsync.*.public_ip}"
 }
