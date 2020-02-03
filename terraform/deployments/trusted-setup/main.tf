@@ -81,7 +81,7 @@ resource "aws_volume_attachment" "trusted_setup_runner" {
 }
 
 resource "aws_instance" "trusted_setup_runner_x1" {
-  count         = 1
+  count         = 0
   ami           = "ami-05dd872834847c880"
   instance_type = "x1e.32xlarge"
   key_name      = "${var.aws_key_pair}"
